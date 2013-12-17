@@ -1,9 +1,11 @@
-import tables
+import statsmodels.api as sm
 import argparse
+import cPickle
+import tables
 import pandas
 import glob
 import os
-import statsmodels.api as sm
+
 data = sm.datasets.scotland.load()
 data.exog = sm.add_constant(data.exog)
 
@@ -17,6 +19,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("rpkm_directory", help="Directory of RPKM files to process.")
     parser.add_argument("--negative-binomial", "--nb", help="Use negative binomial model.")
+    parser.add_argument("--outfile")
     args = parser.parse_args()
 
     rpkm_files = filter(lambda x: x.endswith(".h5"), os.listdir(args.rpkm_directory))
@@ -27,14 +30,15 @@ if __name__ == '__main__':
     for rpkm_filename in rpkm_files:
         out_data[rpkm_filename] = loadRPKM(rpkm_filename)
 
-    if args.negative_binomial:
+    cPickle.dump(out_data, open(args.outfile, 'w'))
+    #if args.negative_binomial:
         # apply glm here
 
-    else:
+    #else:
         # apply zrpkm here
 
     # apply SVD
-    U, S, Vt = np.linalg.svd(rpkm,full_matrices=False)
-    new_S = np.diag(np.hstack([np.zeros([components_removed]), S[components_removed:]]))
-    # reconstruct data matrix
-    rpkm = np.dot(U, np.dot(new_S, Vt))
+    # U, S, Vt = np.linalg.svd(rpkm,full_matrices=False)
+    # new_S = np.diag(np.hstack([np.zeros([components_removed]), S[components_removed:]]))
+    # # reconstruct data matrix
+    # rpkm = np.dot(U, np.dot(new_S, Vt))
