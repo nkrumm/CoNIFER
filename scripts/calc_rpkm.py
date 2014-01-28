@@ -17,7 +17,7 @@ class exon(IsDescription):
     rpkm = FloatCol(pos=2)
 
 def convert_chrom(x):
-    t = x.lstrip("chr")
+    t = str(x).lstrip("chr")
     if t == "X":
         return 23
     elif t == "Y":
@@ -30,7 +30,7 @@ def load_probes(probe_file, minsize=None):
     Load and format a probe file, optionally expanding small probes to <minsize>.
     """
     try:
-        probes = pd.read_csv(probe_file, sep="\t", names=["chrom", "start", "end", "exon"])
+        probes = pd.read_csv(probe_file, sep="\t", names=["chrom", "start", "end", "exon"],usecols=[0,1,2,3])
     except:
         raise Exception("Error! Could not read probes file. "
                         "Check file exists, is tab-delimited and has appropriate header?"
