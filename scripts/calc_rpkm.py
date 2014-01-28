@@ -8,7 +8,8 @@ import itertools
 import re
 import os
 from tables import *
-import pandas
+import pandas as pd
+import argparse
 
 class exon(IsDescription):
     exonID = UInt32Col(pos=0)
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     parser.add_argument("output", help="Output hdf5 file containing RPKM values")
     parser.add_argument("--min-probe-size", default=10, type=int)
     parser.add_argument("--sampleID", help="Optional sample ID for file; default is to use input filename.", default=None)
-
+    args = parser.parse_args()
     if not args.sampleID:
         args.sampleID = os.path.basename(args.input)
 
@@ -69,7 +70,7 @@ if __name__ == '__main__':
         raise Exception("Error! Could not open %s for reading " % args.input)
 
     try:
-        outfile = openFile(rpkm_h5_filename, mode = 'w', title=str(sampleID))
+        outfile = openFile(args.output, mode = 'w', title=str(args.sampleID))
     except IOError:
         raise Exception("Error! Could not obtain write handle for output file!")
 
@@ -122,6 +123,6 @@ if __name__ == '__main__':
         calc_t += t4 - t3
         write_t += t5 - t4
     
-    h5file_in.close()
+    infile.close()
     outfile.close()
-    print sampleID, "read: ", read_t, " calc: ", calc_t, " write: ", write_t, " total: ", time.time()-t1
+    print args.sampleID, "read: ", read_t, " calc: ", calc_t, " write: ", write_t, " total: ", time.time()-t1
