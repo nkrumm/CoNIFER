@@ -50,7 +50,6 @@ def load_probes(probe_file, minsize=None):
         probes["start"][mask] = probes["start"][mask] - left_pad
         probes["end"][mask] = probes["end"][mask] + right_pad
 
-    probes = probes.drop_duplicates(cols=["chrom", "start", "end"])
     return probes
 
 if __name__ == '__main__':
