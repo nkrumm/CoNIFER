@@ -80,13 +80,18 @@ if __name__ == '__main__':
     out_tbl = outfile.createTable(group,"rpkm",exon,"rpkm")
     
     # get total reads
-    unique_reads_by_contig = infile.root.info_group.info_table.read(field='unique_reads')
-    contig_names = infile.root.info_group.info_table.read(field='contig')
-
-    total_reads = 0
-    for contig,cnt in zip(contig_names,unique_reads_by_contig):
-        if contig not in ["chr23","chr24"]:
-            total_reads += int(cnt)
+    # check if this is the "old" style HDF5 file (where this info_table is organized by file part) or a new HDF5 file, organized by chr/contig
+    if "unique_autosomal_reads_ccds" in infile.root.info_group.info_table.colnames:
+        unique_autosomal_reads_ccds = np.sum(infile.root.info_group.info_table.read(field='unique_autosomal_reads_ccds'))
+        unique_autosomal_reads_refseq = np.sum(infile.root.info_group.info_table.read(field='unique_autosomal_reads_refseq'))
+        total_reads = unique_autosomal_reads_refseq + unique_autosomal_reads_ccds
+    else:   
+        unique_reads_by_contig = infile.root.info_group.info_table.read(field='unique_reads')
+        contig_names = infile.root.info_group.info_table.read(field='contig')
+        total_reads = 0
+        for contig,cnt in zip(contig_names,unique_reads_by_contig):
+            if contig not in ["chr23","chr24","chr53","chr54"]: # the high chr #s are for legacy files
+                total_reads += int(cnt)
     
     read_t, calc_t, write_t = 0, 0, 0
 
