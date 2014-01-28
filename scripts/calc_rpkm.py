@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument("--sampleID", help="Optional sample ID for file; default is to use input filename.", default=None)
     args = parser.parse_args()
     if not args.sampleID:
-        args.sampleID = os.path.splittext(os.path.basename(args.input))[0]
+        args.sampleID = os.path.splitext(os.path.basename(args.input))[0]
 
     t1 = time.time()
     try:
