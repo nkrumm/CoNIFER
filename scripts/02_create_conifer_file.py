@@ -27,14 +27,41 @@ def process_sample_list(args):
             sys.exit(1)
     return sample_list
 
-def process_probe_list(args):
+def convert_chrom(x):
+    t = str(x).lstrip("chr")
+    if t == "X":
+        return 23
+    elif t == "Y":
+        return 24
+    else:
+        return int(t)
+
+def load_probes(probe_file, minsize=None):
+    """
+    Load and format a probe file, optionally expanding small probes to <minsize>.
+    """
     try:
-        with open(args.probes) as probe_file:
-            probe_list = pandas.read_csv(probe_file)
+        probes = pd.read_csv(probe_file, sep="\t", names=["chromosome", "start", "stop", "name", "isSegDup","isPPG","strand"])
     except:
-        log.exception("Could not read probe file!")
-        sys.exit(1)
-    return probe_list
+        log.exception("Could not read probes file. "
+                        "Check file exists, is tab-delimited and has appropriate header?"
+                        "Required fields: chromosome,start,stop,name,isSegDup,isPPG,strand")
+
+    probes["chromosome"] = map(convert_chrom, probes.chromosome)
+    if probes["chromosome"].dtype != np.int64:
+        log.exception("Could not convert all probes to standard chromosome notation!")
+
+    probes["probe_size"] = probes["stop"] - probes["start"]
+    probes["probeID"] = probes.index
+    if minsize:
+        mask = probes.probe_size < minsize
+        d = minsize - probes[mask]["probe_size"]
+        left_pad = np.floor(d/2)
+        right_pad = np.ceil(d/2)
+        probes["start"][mask] = probes["start"][mask] - left_pad
+        probes["stop"][mask] = probes["stop"][mask] + right_pad
+
+    return probes
 
 def zrpkm(rpkm,median,sd):
     return (rpkm - median) / sd
@@ -66,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("--samples", required=True)
     parser.add_argument("--probes", required=True)
     parser.add_argument("--chromosomes",type=int, nargs="*", required=False, default=range(1,25))
-    #parser.add_argument("--minimum_probe_size", type=int, required=False, default=10)
+    parser.add_argument("--min-probe-size", default=10, type=int)
     parser.add_argument("--QC_report","--qc", type=str, required=False, default=None)
     parser.add_argument("--log", type=str, required=False, default=None)
     parser.add_argument("--loglevel", type=str, required=False, default="INFO")
@@ -109,7 +136,7 @@ if __name__ == "__main__":
     log.info("Have %d samples", len(sample_list))
 
     log.info("Processing probe list...")
-    probe_list = process_probe_list(args)
+    probe_list = load_probes(args.probe_file, minsize=args.min_probe_size)
     num_probes = len(probe_list)
     log.info("Have %d probes", num_probes)
 
