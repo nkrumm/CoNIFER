@@ -263,7 +263,10 @@ mask = np.array([str(s) in out_samples for s in sample_list.sampleID.values])
 out_samples = np.empty(np.sum(mask),dtype=dt)
 
 for field in ["sampleID", "cohort", "sex", "ethnicity"]:
-    out_samples[field] = sample_list[mask][field]
+    if field in sample_list:
+        out_samples[field] = sample_list[mask][field]
+    else:
+        out_samples[field] = ""
 
 sample_table.append(out_samples)
 
