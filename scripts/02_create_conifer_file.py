@@ -36,12 +36,12 @@ def convert_chrom(x):
     else:
         return int(t)
 
-def load_probes(probe_file, minsize=None):
+def load_probes(probes, minsize=None):
     """
     Load and format a probe file, optionally expanding small probes to <minsize>.
     """
     try:
-        probes = pd.read_csv(probe_file, sep="\t", names=["chromosome", "start", "stop", "name", "isSegDup","isPPG","strand"])
+        probes = pd.read_csv(probes, sep="\t", names=["chromosome", "start", "stop", "name", "isSegDup","isPPG","strand"])
     except:
         log.exception("Could not read probes file. "
                         "Check file exists, is tab-delimited and has appropriate header?"
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     log.info("Have %d samples", len(sample_list))
 
     log.info("Processing probe list...")
-    probe_list = load_probes(args.probe_file, minsize=args.min_probe_size)
+    probe_list = load_probes(args.probes, minsize=args.min_probe_size)
     num_probes = len(probe_list)
     log.info("Have %d probes", num_probes)
 
