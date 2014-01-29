@@ -52,7 +52,7 @@ def load_probes(probes, minsize=None):
         log.exception("Could not convert all probes to standard chromosome notation!")
 
     probes["probe_size"] = probes["stop"] - probes["start"]
-    probes["probeID"] = probes.index
+    probes["probeID"] = probes.index + 1
     if minsize:
         mask = probes.probe_size < minsize
         d = minsize - probes[mask]["probe_size"]
