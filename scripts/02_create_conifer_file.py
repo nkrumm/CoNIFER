@@ -165,7 +165,7 @@ if __name__ == "__main__":
             rpkm_infile_fn = s["file"]
             try:
                 h5file_in = openFile(rpkm_infile_fn, mode='r')
-                #log.debug("Loading %s (%d/%d)" % (rpkm_infile_fn, ix+1, num_samples))
+                log.debug("Loading %s (%d/%d)" % (rpkm_infile_fn, ix+1, num_samples))
             except IOError: 
                 #print "cannot find %s.h5" % s
                 log.warn("Cannot open RPKM data file: %s. Removing from analysis.", rpkm_infile_fn)
