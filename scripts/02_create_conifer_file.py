@@ -10,7 +10,7 @@ import os
 from tables import *
 import argparse
 import logging
-import pandas 
+import pandas as pd
 
 def process_sample_list(args):
     if os.path.isdir(args.samples):
@@ -21,7 +21,7 @@ def process_sample_list(args):
         try:
             with open(args.samples) as sample_file:
                 # read in CSV file. Format should be SampleID, RPKM_PATH, all fields after are additional fields added.
-                sample_list = pandas.read_csv(sample_file)
+                sample_list = pd.read_csv(sample_file)
         except:
             log.exception("Could not read sample file!")
             sys.exit(1)
@@ -46,7 +46,7 @@ def load_probes(probes, minsize=None):
         log.exception("Could not read probes file. "
                         "Check file exists, is tab-delimited and has appropriate header?"
                         "Required fields: chromosome,start,stop,name,isSegDup,isPPG,strand")
-
+        sys.exit(1)
     probes["chromosome"] = map(convert_chrom, probes.chromosome)
     if probes["chromosome"].dtype != np.int64:
         log.exception("Could not convert all probes to standard chromosome notation!")
