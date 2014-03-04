@@ -126,38 +126,92 @@ def CF_analyze(args):
 	chrs_to_process_str = ', '.join([cf.chrInt2Str(c) for c in chrs_to_process])
 	print '[INIT] Attempting to process chromosomes: ', chrs_to_process_str
 	
-	
+	if args.all_chromosomes:
+		print "[RUNNING: all chromosomes] Found %d probes" % len(probes)
+		print "[RUNNING: all chromosomes] Calculating median RPKM"
+		median = np.median(RPKM_data,1)
+		sd = np.std(RPKM_data,1)
+		probe_mask = median >= float(args.min_rpkm)
+		print "[RUNNING: all chromosomes] Masking %d probes with median RPKM < %f" % (np.sum(probe_mask==False), float(args.min_rpkm))
+		RPKM_data = RPKM_data[probe_mask, :]
+		num_chr_probes = np.sum(probe_mask)
+		print "[RUNNING: all chromosomes] Calculating ZRPKM scores..."
+		RPKM_data = np.apply_along_axis(cf.zrpkm, 0, RPKM_data[probe_mask], median[probe_mask], sd[probe_mask])
+		print "[RUNNING: all chromosomes] SVD decomposition..."
+		components_removed = int(args.svd)
+		
+		U, S, Vt = np.linalg.svd(RPKM_data,full_matrices=False)
+		new_S = np.diag(np.hstack([np.zeros([components_removed]),S[components_removed:]]))
+		
+		if args.write_svals != "":
+			sval_f.write('chr' + str(chr) + '\t' + '\t'.join([str(_i) for _i in S]) + "\n")
+		
+		if args.plot_scree != "":
+			ax.plot(S, label='chr' + str(chr),lw=0.5)
+		
+		# reconstruct data matrix
+		RPKM_data = np.dot(U, np.dot(new_S, Vt))
 	
 	for chr in chrs_to_process:
 		print "[RUNNING: chr%d] Now on: %s" %(chr, cf.chrInt2Str(chr))
 		chr_group_name = "chr%d" % chr
 		chr_group = h5file_out.createGroup("/",chr_group_name,chr_group_name)
 		
-		chr_probes = filter(lambda i: i["chr"] == chr, probes)
-		num_chr_probes = len(chr_probes)
-		start_probeID = chr_probes[0]['probeID']
-		stop_probeID = chr_probes[-1]['probeID']
-		print "[RUNNING: chr%d] Found %d probes; probeID range is [%d-%d]" % (chr, len(chr_probes), start_probeID-1, stop_probeID) # probeID is 1-based and slicing is 0-based, hence the start_probeID-1 term
+		chr_mask = np.array(map(operator.itemgetter("chr"),probes)) == chr
 		
-		rpkm = RPKM_data[start_probeID:stop_probeID,:]
-		
-		print "[RUNNING: chr%d] Calculating median RPKM" % chr
-		median = np.median(rpkm,1)
-		sd = np.std(rpkm,1)
-		probe_mask = median >= float(args.min_rpkm)
-		print "[RUNNING: chr%d] Masking %d probes with median RPKM < %f" % (chr, np.sum(probe_mask==False), float(args.min_rpkm))
-		
-		rpkm = rpkm[probe_mask, :]
-		num_chr_probes = np.sum(probe_mask)
-		
-		if num_chr_probes <= len(samples):
-			print "[ERROR] This chromosome has fewer informative probes than there are samples in the analysis! There are probably no mappings on this chromosome. Please remove these probes from the probes.txt file"
-			sys.exit(0)
-		
-		probeIDs = np.array(map(operator.itemgetter("probeID"),chr_probes))[probe_mask]
-		probe_starts = np.array(map(operator.itemgetter("start"),chr_probes))[probe_mask]
-		probe_stops = np.array(map(operator.itemgetter("stop"),chr_probes))[probe_mask]	
-		gene_names =  np.array(map(operator.itemgetter("name"),chr_probes))[probe_mask]	
+		if not args.all_chromosomes:
+			chr_probes = filter(lambda i: i["chr"] == chr, probes)
+			num_chr_probes = len(chr_probes)
+			start_probeID = chr_probes[0]['probeID']
+			stop_probeID = chr_probes[-1]['probeID']
+			print "[RUNNING: chr%d] Found %d probes; probeID range is [%d-%d]" % (chr, len(chr_probes), start_probeID-1, stop_probeID) # probeID is 1-based and slicing is 0-based, hence the start_probeID-1 term
+			
+			rpkm = RPKM_data[start_probeID:stop_probeID,:]
+			
+			print "[RUNNING: chr%d] Calculating median RPKM" % chr
+			median = np.median(rpkm,1)
+			sd = np.std(rpkm,1)
+			probe_mask = median >= float(args.min_rpkm)
+			print "[RUNNING: chr%d] Masking %d probes with median RPKM < %f" % (chr, np.sum(probe_mask==False), float(args.min_rpkm))
+			
+			rpkm = rpkm[probe_mask, :]
+			num_chr_probes = np.sum(probe_mask)
+			
+			if num_chr_probes <= len(samples):
+				print "[ERROR] This chromosome has fewer informative probes than there are samples in the analysis! There are probably no mappings on this chromosome. Please remove these probes from the probes.txt file"
+				sys.exit(0)
+
+			print "[RUNNING: chr%d] Calculating ZRPKM scores..." % chr
+			rpkm = np.apply_along_axis(cf.zrpkm, 0, rpkm, median[probe_mask], sd[probe_mask])
+			
+			# svd transform
+			print "[RUNNING: chr%d] SVD decomposition..." % chr
+			components_removed = int(args.svd)
+			
+			U, S, Vt = np.linalg.svd(rpkm,full_matrices=False)
+			new_S = np.diag(np.hstack([np.zeros([components_removed]),S[components_removed:]]))
+			
+			if args.write_svals != "":
+				sval_f.write('chr' + str(chr) + '\t' + '\t'.join([str(_i) for _i in S]) + "\n")
+			
+			if args.plot_scree != "":
+				ax.plot(S, label='chr' + str(chr),lw=0.5)
+			
+			# reconstruct data matrix
+			rpkm = np.dot(U, np.dot(new_S, Vt))
+
+			probeIDs = np.array(map(operator.itemgetter("probeID"),chr_probes))[probe_mask]
+			probe_starts = np.array(map(operator.itemgetter("start"),chr_probes))[probe_mask]
+			probe_stops = np.array(map(operator.itemgetter("stop"),chr_probes))[probe_mask]	
+			gene_names =  np.array(map(operator.itemgetter("name"),chr_probes))[probe_mask]	
+		else:
+			num_chr_probes = np.sum(chr_mask & probe_mask)
+			probeIDs = np.array(map(operator.itemgetter("probeID"),probes))[chr_mask & probe_mask]
+			probe_starts = np.array(map(operator.itemgetter("start"),probes))[chr_mask & probe_mask]
+			probe_stops = np.array(map(operator.itemgetter("stop"),probes))[chr_mask & probe_mask]	
+			gene_names =  np.array(map(operator.itemgetter("name"),probes))[chr_mask & probe_mask]	
+
+			rpkm = RPKM_data[chr_mask & probe_mask, :]
 		
 		dt = np.dtype([('probeID',np.uint32),('start',np.uint32),('stop',np.uint32), ('name', np.str_, 20)])
 		
@@ -168,25 +222,6 @@ def CF_analyze(args):
 		out_probes['name'] = gene_names
 		probe_table = h5file_out.createTable(probe_group,"probes_chr%d" % chr,cf.probe,"chr%d" % chr)
 		probe_table.append(out_probes)
-		
-		print "[RUNNING: chr%d] Calculating ZRPKM scores..." % chr
-		rpkm = np.apply_along_axis(cf.zrpkm, 0, rpkm, median[probe_mask], sd[probe_mask])
-		
-		# svd transform
-		print "[RUNNING: chr%d] SVD decomposition..." % chr
-		components_removed = int(args.svd)
-		
-		U, S, Vt = np.linalg.svd(rpkm,full_matrices=False)
-		new_S = np.diag(np.hstack([np.zeros([components_removed]),S[components_removed:]]))
-		
-		if args.write_svals != "":
-			sval_f.write('chr' + str(chr) + '\t' + '\t'.join([str(_i) for _i in S]) + "\n")
-		
-		if args.plot_scree != "":
-			ax.plot(S, label='chr' + str(chr),lw=0.5)
-		
-		# reconstruct data matrix
-		rpkm = np.dot(U, np.dot(new_S, Vt))
 		
 		
 		# save to HDF5 file
@@ -624,7 +659,7 @@ def CF_bam2RPKM(args):
 
 	
 
-VERSION = "0.2.2"
+VERSION = "targetedseq-dev-0.1"
 parser = argparse.ArgumentParser(prog="CoNIFER", description="This is CoNIFER %s (Copy Number Inference From Exome Reads), designed to detect and genotype CNVs and CNPs from exome sequence read-depth data. See Krumm et al., Genome Research (2012) doi:10.1101/gr.138115.112 \nNiklas Krumm, 2012\n nkrumm@uw.edu" % VERSION)
 parser.add_argument('--version', action='version', version='%(prog)s ' + VERSION)
 subparsers = parser.add_subparsers(help='Command to be run.')
@@ -646,6 +681,7 @@ analyze_parser.add_argument('--min_rpkm', metavar='1.00', type=float, nargs="?",
 analyze_parser.add_argument('--write_svals', metavar='SingularValues.txt', type=str, default= "", help="Optional file to write singular values (S-values). Used for Scree Plot.")
 analyze_parser.add_argument('--plot_scree', metavar='ScreePlot.png', type=str, default= "", help="Optional graphical scree plot. Requires matplotlib.")
 analyze_parser.add_argument('--write_sd', metavar='StandardDeviations.txt', type=str, default= "", help="Optional file with sample SVD-ZRPKM standard deviations. Used to filter noisy samples.")
+analyze_parser.add_argument('--all_chromosomes', action="store_true", default=False, help="Run all chromosomes in one SVD transformation. Useful for targeted sequencing panels.")
 analyze_parser.set_defaults(func=CF_analyze)
 
 # export command
