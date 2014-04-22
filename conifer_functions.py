@@ -109,7 +109,7 @@ def loadRPKM(rpkm_filename):
 		return rpkm_h5.root.rpkm.rpkm.read(field="rpkm")
 		rpkm_h5.close()
 	else:
-		return np.loadtxt(samples[s], dtype=np.float, delimiter="\t", skiprows=0, usecols=[2])
+		return np.loadtxt(rpkm_filename, dtype=np.float, delimiter="\t", skiprows=0, usecols=[2])
 		
 def export_sample(h5file_in,sample,probes,outfile_f):
 	dt = np.dtype([('chr','|S10'),('start', '<u4'), ('stop', '<u4'), ('name', '|S20'),('SVDZRPKM',np.float)])

@@ -134,9 +134,12 @@ def CF_analyze(args):
 		probe_mask = median >= float(args.min_rpkm)
 		print "[RUNNING: all chromosomes] Masking %d probes with median RPKM < %f" % (np.sum(probe_mask==False), float(args.min_rpkm))
 		RPKM_data = RPKM_data[probe_mask, :]
+		median = median[probe_mask]
+		sd = sd[probe_mask]
+		masked_probes = list(np.array(probes)[probe_mask])
 		num_chr_probes = np.sum(probe_mask)
 		print "[RUNNING: all chromosomes] Calculating ZRPKM scores..."
-		RPKM_data = np.apply_along_axis(cf.zrpkm, 0, RPKM_data[probe_mask], median[probe_mask], sd[probe_mask])
+		RPKM_data = np.apply_along_axis(cf.zrpkm, 0, RPKM_data, median, sd)
 		print "[RUNNING: all chromosomes] SVD decomposition..."
 		components_removed = int(args.svd)
 		
@@ -144,22 +147,21 @@ def CF_analyze(args):
 		new_S = np.diag(np.hstack([np.zeros([components_removed]),S[components_removed:]]))
 		
 		if args.write_svals != "":
-			sval_f.write('chr' + str(chr) + '\t' + '\t'.join([str(_i) for _i in S]) + "\n")
+			sval_f.write('all' + '\t' + '\t'.join([str(_i) for _i in S]) + "\n")
 		
 		if args.plot_scree != "":
-			ax.plot(S, label='chr' + str(chr),lw=0.5)
+			ax.plot(S, label='all chromosomes',lw=0.5)
 		
 		# reconstruct data matrix
 		RPKM_data = np.dot(U, np.dot(new_S, Vt))
+		print RPKM_data.shape
 	
 	for chr in chrs_to_process:
 		print "[RUNNING: chr%d] Now on: %s" %(chr, cf.chrInt2Str(chr))
 		chr_group_name = "chr%d" % chr
-		chr_group = h5file_out.createGroup("/",chr_group_name,chr_group_name)
-		
-		chr_mask = np.array(map(operator.itemgetter("chr"),probes)) == chr
-		
+		chr_group = h5file_out.createGroup("/",chr_group_name,chr_group_name)	
 		if not args.all_chromosomes:
+			chr_mask = np.array(map(operator.itemgetter("chr"),probes)) == chr
 			chr_probes = filter(lambda i: i["chr"] == chr, probes)
 			num_chr_probes = len(chr_probes)
 			start_probeID = chr_probes[0]['probeID']
@@ -205,13 +207,15 @@ def CF_analyze(args):
 			probe_stops = np.array(map(operator.itemgetter("stop"),chr_probes))[probe_mask]	
 			gene_names =  np.array(map(operator.itemgetter("name"),chr_probes))[probe_mask]	
 		else:
-			num_chr_probes = np.sum(chr_mask & probe_mask)
-			probeIDs = np.array(map(operator.itemgetter("probeID"),probes))[chr_mask & probe_mask]
-			probe_starts = np.array(map(operator.itemgetter("start"),probes))[chr_mask & probe_mask]
-			probe_stops = np.array(map(operator.itemgetter("stop"),probes))[chr_mask & probe_mask]	
-			gene_names =  np.array(map(operator.itemgetter("name"),probes))[chr_mask & probe_mask]	
-
-			rpkm = RPKM_data[chr_mask & probe_mask, :]
+			chr_mask = np.array(map(operator.itemgetter("chr"),masked_probes)) == chr
+			num_chr_probes = np.sum(chr_mask)
+			print chr, num_chr_probes
+			probeIDs = np.array(map(operator.itemgetter("probeID"),masked_probes))[chr_mask]
+			probe_starts = np.array(map(operator.itemgetter("start"),masked_probes))[chr_mask]
+			probe_stops = np.array(map(operator.itemgetter("stop"),masked_probes))[chr_mask]	
+			gene_names =  np.array(map(operator.itemgetter("name"),masked_probes))[chr_mask]	
+			rpkm = RPKM_data[chr_mask, :]
+			print rpkm.shape
 		
 		dt = np.dtype([('probeID',np.uint32),('start',np.uint32),('stop',np.uint32), ('name', np.str_, 20)])
 		
