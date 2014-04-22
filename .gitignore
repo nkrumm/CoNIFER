@@ -1,0 +1,5 @@
+targeted_data/
+*.hdf5
+*.pyc
+calls.txt
+*.png
